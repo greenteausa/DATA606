@@ -23,4 +23,5 @@ Datasets
 *Since first three datasets will be continuously updated by their own sites, codebook will use the original repository instead of this github repository. Readme file will be updated with the final dates used on the project.
 
 Graphs
+
 All the graphs are built with Plotly and saved as interactive formats of HTML with mouseover text features. All of them are available in .doc folder and can be seen under the following url format: https://ines570.github.io/DATA606/Figure_Name.html. Figure_Name can be found in .doc folder.
