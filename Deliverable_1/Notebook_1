@@ -1,0 +1,348 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[2]:
+
+
+#Import all the necessary libraries
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import matplotlib.animation as animation
+import plotly.express as px
+import seaborn as sns
+import math
+import os
+from nltk.probability import FreqDist
+from nltk.corpus import stopwords
+from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
+from textblob import TextBlob
+from tqdm import tqdm
+from IPython.display import display_html
+
+
+# In[3]:
+
+
+#Load the global confirmed cases by date datasets
+case = 'https://raw.githubusercontent.com/ines570/DATA606/master/Datasets/CSSE_COVID_19_Time_Series.csv'
+df_case = pd.read_csv(case)
+df_case.head()
+
+
+# In[4]:
+
+
+#Check the data type and null value numbers
+df_case.info()
+
+
+# In[5]:
+
+
+#Check number NaN in Province/State
+
+df_case["Province/State"].isna().sum()
+
+#Since 70% of values are not available, and this information is not going to be used, this will be dropped.
+
+
+# In[6]:
+
+
+#Check how many countries are unique value
+
+print("Number of Country Name is:", df_case["Country/Region"].nunique())
+#There are only 188 unique countries, that means 78 are duplicate.
+
+
+# In[7]:
+
+
+#Print rows that have duplicate Country name
+
+# Select duplicate rows except first occurrence based on all columns
+duplicate_rows = df_case[df_case.duplicated(["Country/Region"])]
+ 
+print("Duplicate Rows by Country/Region:")
+print(duplicate_rows)
+
+
+# In[8]:
+
+
+#Drop a Province/State, Lat, and Long columns
+
+df_case = df_case.drop(['Province/State'], axis=1)
+df_case = df_case.drop(['Lat'], axis=1)
+df_case = df_case.drop(['Long'], axis=1)
+
+
+# In[9]:
+
+
+#Combine rows with same country name
+
+df_case = df_case.groupby(df_case['Country/Region']).aggregate('sum')
+df_case.head()
+
+
+# In[10]:
+
+
+#Check the dataframe shape
+
+df_case.shape
+#Now all the country names are unique values
+
+
+# In[11]:
+
+
+#Reset index
+df_case.reset_index(level=0, inplace=True)
+df_case.head()
+
+
+# In[12]:
+
+
+#Make a choropleth map with the total confirmed cases
+
+fig = px.choropleth(df_case, locations = "Country/Region",
+                    color = np.log10(df_case['6/5/20']), 
+                    hover_name = "Country/Region", 
+                    hover_data = ["6/5/20"],
+                    color_continuous_scale = px.colors.sequential.Plasma, locationmode = "country names")
+fig.update_geos(fitbounds = "locations", visible = True)
+fig.update_layout(title_text = "COVID-19 Confirmed Cases Choropleth Map")
+fig.update_coloraxes(colorbar_title = "Number of Confirmed Cases(Log10 Scale)",colorscale = "ice")
+fig.show()
+
+
+# In[14]:
+
+
+#Save the figure for P3
+fig.write_image("C:/Users/yeaji/Documents/UMBC/Classes/Data606/Figure/fig1.png")
+
+
+# In[15]:
+
+
+#Load the population datasets
+
+pop = 'https://raw.githubusercontent.com/ines570/DATA606/master/Datasets/datasets_553334_1210480_Total_population_by_Country_ISO3_Year_2018.csv'
+df_pop = pd.read_csv(pop, index_col=0)
+df_pop.head(-5)
+
+
+# In[16]:
+
+
+#Check the data type and null value numbers
+df_pop.info()
+
+
+# In[17]:
+
+
+#Check how many unique values are in countrie name, indicator name, and indicator total
+
+print("Number of Country Name is:", df_pop["Country Name"].nunique())
+print("Number of Indicator Name is:", df_pop["Indicator Name"].nunique())
+print("Number of Indicator Code is:", df_pop["Indicator Code"].nunique())
+#There is a single value in indicator name and indicator code
+
+
+# In[19]:
+
+
+#Find the countries that have different names in two datasets and fix it
+
+country_case = df_case['Country/Region'].tolist()
+country_pop = df_pop['Country Name'].tolist()
+print("Country names in df_case:", country_case)
+print("Country names in df_pop:", country_pop)
+
+
+# In[31]:
+
+
+#Print different country names in two dataframes
+
+country_diff = [list(set(country_case).difference(country_pop))]
+print("Different Country names in df_case:", country_diff)
+
+
+# In[23]:
+
+
+#Change Names in df_pop to match names in df_case for country_diff
+
+df_pop = df_pop.replace({'Country Name' : { 'Russian Federation':'Russia','Congo, Rep.':'Congo (Brazzaville)','Bahamas, The':'Bahamas', 
+                                  'Korea, Rep.':'Korea, South', 'Brunei Darussalam':'Brunei', 'Venezuela, RB':'Venezuela', 
+                                  'Iran, Islamic Rep.':'Iran', 'Lao PDR':'Laos', 'Syrian Arab Republic':'Syria', 
+                                  'Myanmar':'Burma', 'Gambia, The':'Gambia', 'Kyrgyz Republic':'Kyrgyzstan', 
+                                  'Egypt, Arab Rep.':'Egypt', 'St. Lucia':'Saint Lucia', 
+                                  'St. Kitts and Nevis':'Saint Kitts and Nevis', 'Yemen, Rep.':'Yemen', 
+                                  'Czech Republic':'Czechia', 'Slovak Republic':'Slovakia', 'United States':'US', 
+                                  'St. Vincent and the Grenadines':'Saint Vincent and the Grenadines', 'Congo, Dem. Rep.':'Congo (Kinshasa)' }})
+
+
+# In[33]:
+
+
+#Check if names are replaced
+
+df_pop['Country Name'].tolist()
+
+
+# In[27]:
+
+
+#Fill in population column in df_case with 2018 in df_pop 
+#by matching Country Name in df_pop to Country/Region in df_case
+
+df_case['Population'] = df_case['Country/Region'].map(df_pop.set_index('Country Name')['2018'])
+df_case.head()
+
+
+# In[37]:
+
+
+#Check null value in population
+df_case.Population.isna().sum()
+
+
+# In[40]:
+
+
+#Print the rows with null value
+line = pd.isnull(df_case['Population'])
+df_case[line]
+
+
+# In[45]:
+
+
+#Fill the populations for Eritrea, Holy See, Taiwan*, Western Sahara by worldometer data
+
+df_case.loc[df_case['Country/Region'] == 'Eritrea', 'Population'] = 3452786
+df_case.loc[df_case['Country/Region'] == 'Holy See', 'Population'] = 801
+df_case.loc[df_case['Country/Region'] == 'Taiwan*', 'Population'] = 23726460
+df_case.loc[df_case['Country/Region'] == 'Western Sahara', 'Population'] = 567402
+df_case.loc[df_case['Country/Region'] == 'Diamond Princess', 'Population'] = 3711
+df_case.loc[df_case['Country/Region'] == 'MS Zaandam', 'Population'] = 1829
+
+
+# In[46]:
+
+
+#Calculate prevalence rate (by 100000) and add to the column
+
+df_case['Prevalence'] = df_case['6/5/20'].div(df_case['Population'], axis=0)
+df_case['Prevalence'] = df_case['Prevalence']*100000
+df_case.head()
+
+
+# In[56]:
+
+
+#Make a choropleth map with the prevalence rate
+
+fig = px.choropleth(df_case, locations = "Country/Region",
+                    color = np.log10(df_case['Prevalence']), 
+                    hover_name = "Country/Region", 
+                    hover_data = ["Prevalence"],
+                    color_continuous_scale = px.colors.sequential.Plasma, locationmode = "country names")
+fig.update_geos(fitbounds = "locations", visible = True)
+fig.update_layout(title_text = "COVID-19 Prevalence Rate Choropleth Map")
+fig.update_coloraxes(colorbar_title = "Number of Prevalence Rates (Log10 Scale)",colorscale = "deep")
+fig.show()
+
+
+# In[57]:
+
+
+#Save the figure for P3
+fig.write_image("C:/Users/yeaji/Documents/UMBC/Classes/Data606/Figure/fig2.png")
+
+
+# In[58]:
+
+
+#Load the mitigation datasets
+
+mitig = 'https://raw.githubusercontent.com/ines570/DATA606/master/Datasets/OxCGRT_latest.csv'
+df_mitig = pd.read_csv(mitig)
+df_mitig.head(-5)
+
+
+# In[59]:
+
+
+#Check the data type and null value numbers
+df_mitig.info()
+#M1_Wildcrd is 100% null so it will be dropped. 
+#Flag columns have many null value, need to think of what to do
+
+
+# In[60]:
+
+
+#Check how many countries are in mitigation dataset
+
+df_mitig.CountryName.nunique()
+
+
+# In[61]:
+
+
+#Drop a M1_Wildcard column
+
+df_mitig.drop(['M1_Wildcard'], axis=1)
+
+
+# In[62]:
+
+
+#Load the mobility datasets
+
+df_mobil = pd.read_csv(r"C:\Users\yeaji\Documents\UMBC\Classes\Data606\data_2\Global_Mobility_Report.csv", 
+                       dtype={"country_region": "object", "country_region_code": "object", "sub_region_1": "object",
+                             "sub_region_2": "object", "date": "string"})
+df_mobil.head(-5)
+
+
+# In[63]:
+
+
+#Check the data type and null value numbers
+df_mobil.info()
+
+
+# In[64]:
+
+
+#Check how many countries are in mitigation dataset
+
+df_mobil.country_region.nunique()
+
+
+# In[65]:
+
+
+#Check the shape of datasets
+
+print("COVID number data shape is:", df_case.shape)
+print("Mitigation data shape is:", df_mitig.shape)
+print("Mobility data shape is:", df_mobil.shape)
+
+
+# In[ ]:
+
+
+
+
