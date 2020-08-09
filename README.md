@@ -5,6 +5,7 @@ Title:Mitigation strategies in public health crises: evaluating the successes an
 Project Aim: 
 1. Explore  COVID-19 global datasets with mitigation and mobility information to gain insights on the pandemic and mobility trends and impact of mitigation efforts.
 2. Visualize the trends and patterns with animated graphs and charts for easy understanding.
+3. Forecast COVID-19 confirmed cases in future dates to see how the pandemic mihgt play out.
 3. Provide recommendations on the most or least effective mitigation efforts for public education and policy guidelines.
 
 Research Questions:
